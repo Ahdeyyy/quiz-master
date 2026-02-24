@@ -1,3 +1,9 @@
+## Project Package Manager and Libraries
+- This Project uses Bun as the package manager. To install dependencies, run `bun install` in the project root. 
+- The project is built using Svelte 5 and SvelteKit.
+- This project uses tailwindcss for styling.
+
+
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
 
 ## Available MCP Tools:

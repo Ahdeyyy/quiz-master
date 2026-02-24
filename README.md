@@ -1,42 +1,84 @@
-# sv
+# Quiz Master
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A minimal, fast quiz app built with SvelteKit 5. Create courses, paste quiz questions in plain text, and take self-graded quizzes with instant per-question feedback.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Courses** — organise quizzes into courses; create, rename, and delete them
+- **Plain-text quiz format** — paste questions in a simple text format; the parser handles the rest
+- **Instant feedback** — after answering a question, correct and incorrect options are highlighted immediately
+- **Per-attempt history** — best score is tracked per quiz across attempts
+- **Persistent storage** — all data lives in `localStorage`; no backend required
+- **Minimal UI** — clean white/zinc/indigo design, no distractions
 
-```sh
-# create a new project
-npx sv create my-app
+## Getting Started
+
+```bash
+bun install
+bun run dev
 ```
 
-To recreate this project with the same configuration:
+Open [http://localhost:5173](http://localhost:5173).
 
-```sh
-# recreate this project
-bun x sv create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:vercel" devtools-json mcp="ide:claude-code,gemini,vscode,opencode+setup:remote" --install bun quiz-master
+## Quiz Text Format
+
+Quizzes are added by pasting plain text. The parser accepts the following format:
+
+```
+Quiz: My Topic Quiz
+---
+Q: What is 2 + 2?
+A) 3
+B) 4 *
+C) 5
+D) 6
+Explanation: Basic addition.
+---
+Q: Is the sky blue?
+A) Yes *
+B) No
 ```
 
-## Developing
+**Rules:**
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+- `Quiz:` sets the quiz title (optional; defaults to "Untitled Quiz")
+- `---` separates questions
+- `Q:` starts a question
+- Options are lettered `A)`, `B)`, etc.; append ` *` to mark the correct answer
+- `Explanation:` is optional per question and shown as inline feedback after answering
+- Each question needs at least 2 options and exactly 1 correct answer
 
-```sh
-npm run dev
+## Project Structure
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```
+src/
+  lib/
+    types.ts              # Data model types (Course, Question, QuizAttempt, …)
+    parser.ts             # Plain-text → quiz object parser
+    quiz-engine.svelte.ts # Reactive quiz session state (QuizEngine class)
+    storage.svelte.ts     # localStorage persistence via Svelte 5 $state
+    utils.ts              # generateId, nowISO helpers
+  routes/
+    +layout.svelte        # Root layout
+    +layout.ts            # Layout load function
+    +page.svelte          # Full app (courses → quiz-take → results)
 ```
 
-## Building
+## Scripts
 
-To create a production version of your app:
+| Command           | Description                      |
+| ----------------- | -------------------------------- |
+| `bun run dev`     | Start dev server                 |
+| `bun run build`   | Production build                 |
+| `bun run preview` | Preview production build locally |
+| `bun run check`   | Svelte type-check                |
+| `bun run lint`    | Lint + format check              |
+| `bun run format`  | Auto-format with Prettier        |
 
-```sh
-npm run build
-```
+## Stack
 
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- [SvelteKit](https://kit.svelte.dev/) 2 + [Svelte](https://svelte.dev/) 5 (runes)
+- [Tailwind CSS](https://tailwindcss.com/) v4
+- [TypeScript](https://www.typescriptlang.org/)
+- [Bun](https://bun.sh/) as package manager
+- Deployed via [`@sveltejs/adapter-vercel`](https://kit.svelte.dev/docs/adapter-vercel)

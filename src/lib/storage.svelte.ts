@@ -24,7 +24,7 @@ export const store = $state<{ courses: Course[]; attempts: QuizAttempt[] }>({
 	attempts: []
 });
 
-let initialized = false;
+let initialized = $state(false);
 
 export function init() {
 	if (initialized) return;
@@ -36,12 +36,14 @@ export function init() {
 
 $effect.root(() => {
 	$effect(() => {
+		const courses = $state.snapshot(store.courses);
 		if (!initialized) return;
-		saveToStorage(COURSES_KEY, $state.snapshot(store.courses));
+		saveToStorage(COURSES_KEY, courses);
 	});
 	$effect(() => {
+		const attempts = $state.snapshot(store.attempts);
 		if (!initialized) return;
-		saveToStorage(ATTEMPTS_KEY, $state.snapshot(store.attempts));
+		saveToStorage(ATTEMPTS_KEY, attempts);
 	});
 });
 

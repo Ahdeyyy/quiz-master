@@ -380,7 +380,7 @@ Focus on: [specific concepts or subtopics]`;
 								{/if}
 
 								<div
-									class="flex items-center gap-3 text-sm opacity-0 transition-opacity group-hover:opacity-100"
+									class="flex items-center gap-3 text-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
 								>
 									<button
 										onclick={() => startEditCourse(course)}
@@ -484,7 +484,7 @@ Focus on: [specific concepts or subtopics]`;
 									{:else}
 										<button
 											onclick={() => (confirmDeleteQuiz = quiz.id)}
-											class="text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-600"
+											class="text-zinc-400 transition-opacity hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
 											>Remove</button
 										>
 									{/if}

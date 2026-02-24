@@ -19,7 +19,7 @@
 
 	init();
 
-	type View = 'courses' | 'course-detail' | 'quiz-add' | 'quiz-take' | 'quiz-result';
+	type View = 'courses' | 'course-detail' | 'quiz-add' | 'quiz-take' | 'quiz-result' | 'help';
 	let currentView = $state<View>('courses');
 	let selectedCourseId = $state<string | null>(null);
 	let selectedQuizId = $state<string | null>(null);
@@ -33,6 +33,8 @@
 	let editingTitle = $state('');
 	let confirmDeleteCourse = $state<string | null>(null);
 	let confirmDeleteQuiz = $state<string | null>(null);
+	let viewBeforeHelp = $state<View>('courses');
+	let promptCopied = $state(false);
 
 	let selectedCourse = $derived(
 		selectedCourseId ? store.courses.find((c) => c.id === selectedCourseId) : null
@@ -134,6 +136,69 @@
 		engine = null;
 		currentView = 'course-detail';
 	}
+
+	function openHelp() {
+		viewBeforeHelp = currentView;
+		currentView = 'help';
+	}
+
+	function closeHelp() {
+		currentView = viewBeforeHelp;
+	}
+
+	async function copyPrompt() {
+		await navigator.clipboard.writeText(AI_PROMPT);
+		promptCopied = true;
+		setTimeout(() => (promptCopied = false), 2000);
+	}
+
+	const AI_PROMPT = `You are generating a quiz for the Quiz Master app. Use EXACTLY this plain-text format — any deviation will cause a parse error.
+
+━━━ FORMAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quiz: [Quiz Title]
+---
+Q: [Question text]
+A) [Option]
+B) [Option] *
+C) [Option]
+Explanation: [Why the correct answer is right]
+---
+Q: [Next question]
+A) [Option] *
+B) [Option]
+---
+
+━━━ RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Start with "Quiz: [Title]" (optional — defaults to "Untitled Quiz")
+• Separate every question with "---"
+• Each question starts with "Q: "
+• Options are lettered A), B), C) … up to F)
+• Mark the correct answer by adding " *" at the END of that option line
+• Each question needs exactly 1 correct answer and at least 2 options
+• "Explanation: " is optional — shown after the user answers
+
+━━━ RICH TEXT (use where appropriate) ━━━━━━━━━━━━━━━━
+
+• Inline code:    \`variable_name\` or \`function()\`
+• Inline math:    $x^2 + y = 5$   (LaTeX, no spaces inside $…$)
+• Display math:   $$\\int_0^1 x\\,dx$$
+• Code block (in the question, before the first option):
+
+  \`\`\`python
+  def example():
+      return 42
+  \`\`\`
+
+  Supported languages: python, javascript, typescript, java, c, cpp,
+                       rust, go, bash, sql, html, css, json
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Now create a [10]-question quiz about: [TOPIC]
+Difficulty: [beginner / intermediate / advanced]
+Focus on: [specific concepts or subtopics]`;
 </script>
 
 <div class="min-h-screen bg-white" transition:fade>
@@ -167,6 +232,17 @@
 				<span>/</span>
 				<span class="font-medium text-zinc-900">Results</span>
 			{/if}
+			{#if currentView === 'help'}
+				<span>/</span>
+				<span class="font-medium text-zinc-900">Help</span>
+			{/if}
+			<span class="ml-auto">
+				{#if currentView === 'help'}
+					<button onclick={closeHelp} class="hover:text-zinc-600">← Back</button>
+				{:else}
+					<button onclick={openHelp} class="hover:text-zinc-600">Help</button>
+				{/if}
+			</span>
 		</nav>
 
 		<!-- COURSES LIST -->
@@ -526,6 +602,243 @@ C) The absence of a value *</pre>
 					<button onclick={backToCourse} class="text-sm text-zinc-400 hover:text-zinc-600"
 						>Back to Course</button
 					>
+				</div>
+			</div>
+		{/if}
+
+		<!-- HELP -->
+		{#if currentView === 'help'}
+			<div transition:fade={{ duration: 150 }}>
+				<h1 class="mb-10 text-4xl font-bold tracking-tight text-zinc-900">Help</h1>
+
+				<!-- Getting Started -->
+				<div class="mb-10">
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
+						Getting Started
+					</h2>
+					<ol class="space-y-4">
+						<li class="flex gap-4">
+							<span
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
+								>1</span
+							>
+							<div>
+								<p class="font-medium text-zinc-900">Create a Course</p>
+								<p class="mt-0.5 text-sm text-zinc-500">
+									Type a course name into the input on the Courses page and press
+									<kbd
+										class="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-600"
+										>Enter</kbd
+									>.
+								</p>
+							</div>
+						</li>
+						<li class="flex gap-4">
+							<span
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
+								>2</span
+							>
+							<div>
+								<p class="font-medium text-zinc-900">Add a Quiz</p>
+								<p class="mt-0.5 text-sm text-zinc-500">
+									Open the course, click <strong>Add Quiz</strong>, paste your quiz text (see
+									format below or use the AI prompt), then click
+									<strong>Parse &amp; Add</strong>.
+								</p>
+							</div>
+						</li>
+						<li class="flex gap-4">
+							<span
+								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
+								>3</span
+							>
+							<div>
+								<p class="font-medium text-zinc-900">Take the Quiz</p>
+								<p class="mt-0.5 text-sm text-zinc-500">
+									Click <strong>Take Quiz</strong>. Each answer shows immediate colour feedback.
+									Navigate with Previous / Next and submit when you reach the last question.
+								</p>
+							</div>
+						</li>
+					</ol>
+				</div>
+
+				<!-- Quiz Format -->
+				<div class="mb-10">
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
+						Quiz Format
+					</h2>
+					<div class="mb-4 overflow-hidden rounded-lg border border-zinc-200">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-zinc-200 bg-zinc-50">
+									<th class="px-4 py-2.5 text-left font-medium text-zinc-600">Syntax</th>
+									<th class="px-4 py-2.5 text-left font-medium text-zinc-600">What it does</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-zinc-100">
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">Quiz: Title</td>
+									<td class="px-4 py-2.5 text-zinc-600">Set the quiz title (optional)</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">---</td>
+									<td class="px-4 py-2.5 text-zinc-600">Separate questions</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">Q: text</td>
+									<td class="px-4 py-2.5 text-zinc-600">Start a question</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">A) text</td>
+									<td class="px-4 py-2.5 text-zinc-600">Add an answer option (A – F)</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">A) text *</td>
+									<td class="px-4 py-2.5 text-zinc-600"
+										>Mark the correct answer (space&nbsp;+ asterisk at end)</td
+									>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">Explanation: text</td>
+									<td class="px-4 py-2.5 text-zinc-600"
+										>Inline feedback shown after answering (optional)</td
+									>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<pre
+						class="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-4 font-mono text-xs text-zinc-700">Quiz: Python Basics
+---
+Q: What does `len([1, 2, 3])` return?
+A) 2
+B) 3 *
+C) 4
+Explanation: len() counts the items in the list.
+---
+Q: Solve for $x$: $x + 5 = 10$
+A) $x = 4$
+B) $x = 5$ *</pre>
+				</div>
+
+				<!-- Rich Text -->
+				<div class="mb-10">
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
+						Rich Text
+					</h2>
+					<div class="mb-3 overflow-hidden rounded-lg border border-zinc-200">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-zinc-200 bg-zinc-50">
+									<th class="px-4 py-2.5 text-left font-medium text-zinc-600">You type</th>
+									<th class="px-4 py-2.5 text-left font-medium text-zinc-600">Renders as</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-zinc-100">
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">`code`</td>
+									<td class="px-4 py-2.5 text-zinc-600">
+										<code
+											class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-800"
+											>inline code badge</code
+										>
+									</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">$x^2 + y$</td>
+									<td class="px-4 py-2.5 text-zinc-600">inline KaTeX math</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">$$x^2 + y$$</td>
+									<td class="px-4 py-2.5 text-zinc-600">display math (centred, larger)</td>
+								</tr>
+								<tr>
+									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">```python … ```</td>
+									<td class="px-4 py-2.5 text-zinc-600"
+										>syntax-highlighted block (questions only)</td
+									>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<p class="text-xs text-zinc-400">
+						Supported highlight languages: <span class="font-mono"
+							>python, javascript, typescript, java, c, cpp, rust, go, bash, sql, html, css,
+							json</span
+						>. Code blocks switch between light and dark themes automatically based on your system
+						preference.
+					</p>
+				</div>
+
+				<!-- Generate with AI -->
+				<div class="mb-10">
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">
+						Generate with AI
+					</h2>
+					<p class="mb-4 text-sm text-zinc-500">
+						Use the prompt below with ChatGPT, Claude, Gemini, or any AI assistant. Fill in your
+						topic, difficulty, and focus at the bottom, then paste the AI's output directly into the
+						<strong class="text-zinc-700">Add Quiz</strong> text box.
+					</p>
+					<pre
+						class="mb-3 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-4 font-mono text-xs text-zinc-700 whitespace-pre">{AI_PROMPT}</pre>
+					<button
+						onclick={copyPrompt}
+						class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors {promptCopied
+							? 'bg-emerald-600 hover:bg-emerald-700'
+							: 'bg-indigo-600 hover:bg-indigo-700'}"
+					>
+						{promptCopied ? '✓ Copied!' : 'Copy prompt'}
+					</button>
+				</div>
+
+				<!-- Tips -->
+				<div class="mb-10">
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-zinc-400 uppercase">Tips</h2>
+					<ul class="space-y-2 text-sm text-zinc-600">
+						<li class="flex gap-2">
+							<span class="mt-0.5 text-zinc-300">•</span>
+							<span
+								>Export any quiz as a <code
+									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700"
+									>.txt</code
+								> file using the <strong class="text-zinc-700">Export</strong> button on each quiz card.</span
+							>
+						</li>
+						<li class="flex gap-2">
+							<span class="mt-0.5 text-zinc-300">•</span>
+							<span
+								>Export all quizzes in a course at once with <strong class="text-zinc-700"
+									>Export All</strong
+								>.</span
+							>
+						</li>
+						<li class="flex gap-2">
+							<span class="mt-0.5 text-zinc-300">•</span>
+							<span
+								>Your best score per quiz is shown in the course view after at least one attempt.</span
+							>
+						</li>
+						<li class="flex gap-2">
+							<span class="mt-0.5 text-zinc-300">•</span>
+							<span
+								>All data is stored in your browser's
+								<code class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700"
+									>localStorage</code
+								> — no account or internet connection required.</span
+							>
+						</li>
+						<li class="flex gap-2">
+							<span class="mt-0.5 text-zinc-300">•</span>
+							<span
+								>To back up your quizzes, export them and keep the <code
+									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700"
+									>.txt</code
+								> files. Re-import them at any time by pasting into Add Quiz.</span
+							>
+						</li>
+					</ul>
 				</div>
 			</div>
 		{/if}

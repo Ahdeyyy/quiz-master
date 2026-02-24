@@ -1,15 +1,17 @@
 # Quiz Master
 
-A minimal, fast quiz app built with SvelteKit 5. Create courses, paste quiz questions in plain text, and take self-graded quizzes with instant per-question feedback.
+A minimal, fast quiz app built with SvelteKit 5. Create courses, paste quiz questions in plain text, and take self-graded quizzes with instant per-question feedback. Questions support syntax-highlighted code blocks and LaTeX math rendering.
 
 ## Features
 
 - **Courses** — organise quizzes into courses; create, rename, and delete them
 - **Plain-text quiz format** — paste questions in a simple text format; the parser handles the rest
+- **Rich text** — syntax-highlighted code blocks (Shiki), LaTeX math (KaTeX), and inline code in questions, options, and explanations
 - **Instant feedback** — after answering a question, correct and incorrect options are highlighted immediately
 - **Per-attempt history** — best score is tracked per quiz across attempts
 - **Persistent storage** — all data lives in `localStorage`; no backend required
 - **Minimal UI** — clean white/zinc/indigo design, no distractions
+- **In-app Help** — built-in reference guide and a copyable AI prompt for generating quizzes
 
 ## Getting Started
 
@@ -27,16 +29,21 @@ Quizzes are added by pasting plain text. The parser accepts the following format
 ```
 Quiz: My Topic Quiz
 ---
-Q: What is 2 + 2?
-A) 3
-B) 4 *
-C) 5
-D) 6
-Explanation: Basic addition.
+Q: What does this code output?
+```python
+print("hello")
+```
+A) hello *
+B) world
+Explanation: print() outputs its argument with a newline.
 ---
-Q: Is the sky blue?
-A) Yes *
-B) No
+Q: Solve for $x$: $2x + 3 = 7$
+A) $x = 1$
+B) $x = 2$ *
+---
+Q: What does `None` mean in Python?
+A) An empty string
+B) The absence of a value *
 ```
 
 **Rules:**
@@ -100,6 +107,10 @@ B) a + b *
 
 Code blocks automatically switch between light and dark colour schemes based on your system preference (`prefers-color-scheme`).
 
+## Generating Quizzes with AI
+
+Open the in-app **Help** page (top-right corner of the nav) to find a ready-made prompt you can copy and paste into ChatGPT, Claude, Gemini, or any AI assistant. The AI will generate a correctly-formatted quiz that you can paste directly into the Add Quiz text box.
+
 ## Project Structure
 
 ```
@@ -110,10 +121,13 @@ src/
     quiz-engine.svelte.ts # Reactive quiz session state (QuizEngine class)
     storage.svelte.ts     # localStorage persistence via Svelte 5 $state
     utils.ts              # generateId, nowISO helpers
+    rich-text.ts          # Rich text segment parser (code, math, inline code)
+    shiki.ts              # Shiki syntax-highlighter singleton
+    RichText.svelte       # Rich text renderer component
   routes/
     +layout.svelte        # Root layout
     +layout.ts            # Layout load function
-    +page.svelte          # Full app (courses → quiz-take → results)
+    +page.svelte          # Full app (courses → quiz-take → results → help)
 ```
 
 ## Scripts
@@ -131,6 +145,8 @@ src/
 
 - [SvelteKit](https://kit.svelte.dev/) 2 + [Svelte](https://svelte.dev/) 5 (runes)
 - [Tailwind CSS](https://tailwindcss.com/) v4
+- [Shiki](https://shiki.style/) — syntax highlighting (dual light/dark theme)
+- [KaTeX](https://katex.org/) — LaTeX math rendering
 - [TypeScript](https://www.typescriptlang.org/)
 - [Bun](https://bun.sh/) as package manager
 - Deployed via [`@sveltejs/adapter-vercel`](https://kit.svelte.dev/docs/adapter-vercel)

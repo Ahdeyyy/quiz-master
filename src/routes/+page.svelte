@@ -15,6 +15,7 @@
 	import { generateId, nowISO, downloadFile } from '$lib/utils';
 	import type { Course, TopicQuiz } from '$lib/types';
 	import { fade } from 'svelte/transition';
+	import RichText from '$lib/RichText.svelte';
 
 	init();
 
@@ -338,16 +339,29 @@
 					<p class="mb-1 font-medium text-zinc-700">Format example:</p>
 					<pre class="font-mono">Quiz: My Topic Quiz
 ---
-Q: What is 2 + 2?
-A) 3
-B) 4 *
-C) 5
-D) 6
-Explanation: Basic addition
+Q: What does this print?
+```python
+print("hello")
+```
+A) hello *
+B) world
+Explanation: print() outputs its argument.
 ---
-Q: Is the sky blue?
-A) Yes *
-B) No</pre>
+Q: What is $\sqrt{9}$?
+A) $x = 2$
+B) $x = 3$ *
+C) $x = 4$
+---
+Q: Use `None` to represent…
+A) An empty string
+B) Zero
+C) The absence of a value *</pre>
+					<p class="mt-2 text-zinc-400">
+						Supports inline code <span class="font-mono">`code`</span>, math
+						<span class="font-mono">$expr$</span>, display math
+						<span class="font-mono">$$expr$$</span>, and fenced code blocks
+						<span class="font-mono">```lang</span> in questions.
+					</p>
 				</div>
 
 				<textarea
@@ -401,7 +415,9 @@ B) No</pre>
 					{@const selectedId = engine.getSelectedOption(engine.currentQuestion.id)}
 					{@const isAnswered = selectedId !== undefined}
 
-					<p class="mb-8 text-2xl text-zinc-900">{engine.currentQuestion.text}</p>
+					<div class="mb-8 text-2xl text-zinc-900">
+						<RichText text={engine.currentQuestion.text} />
+					</div>
 
 					<div class="space-y-3">
 						{#each engine.currentQuestion.options as option}
@@ -418,13 +434,15 @@ B) No</pre>
 											: 'border-zinc-100 text-zinc-400'
 									: 'border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50'}"
 							>
-								{option.text}
+								<RichText text={option.text} inline />
 							</button>
 						{/each}
 					</div>
 
 					{#if isAnswered && engine.currentQuestion.explanation}
-						<p class="mt-5 text-sm text-zinc-500">{engine.currentQuestion.explanation}</p>
+						<p class="mt-5 text-sm text-zinc-500">
+						<RichText text={engine.currentQuestion.explanation ?? ''} />
+					</p>
 					{/if}
 				{/if}
 
@@ -470,7 +488,9 @@ B) No</pre>
 									{correct ? '\u2713' : '\u2717'}
 								</span>
 								<div>
-									<p class="font-medium text-zinc-900">{i + 1}. {question.text}</p>
+									<p class="font-medium text-zinc-900">
+										{i + 1}. <RichText text={question.text} />
+									</p>
 									{#each question.options as option}
 										<p
 											class="mt-1 text-sm {option.id === question.correctOptionId
@@ -479,14 +499,16 @@ B) No</pre>
 													? 'text-red-500 line-through'
 													: 'text-zinc-400'}"
 										>
-											{option.text}
+											<RichText text={option.text} inline />
 											{#if option.id === question.correctOptionId}
 												<span class="ml-1 text-xs">(correct)</span>
 											{/if}
 										</p>
 									{/each}
 									{#if question.explanation}
-										<p class="mt-2 text-sm text-zinc-500">{question.explanation}</p>
+										<p class="mt-2 text-sm text-zinc-500">
+											<RichText text={question.explanation} />
+										</p>
 									{/if}
 								</div>
 							</div>

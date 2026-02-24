@@ -48,6 +48,58 @@ B) No
 - `Explanation:` is optional per question and shown as inline feedback after answering
 - Each question needs at least 2 options and exactly 1 correct answer
 
+## Rich Text Formatting
+
+Questions, options, and explanations support rich text formatting:
+
+### Inline code
+
+Wrap in single backticks anywhere in a question, option, or explanation:
+
+```
+Q: What does `None` mean in Python?
+A) An empty string
+B) The absence of a value *
+```
+
+### Inline math
+
+Wrap LaTeX in single dollar signs (no surrounding spaces):
+
+```
+Q: Solve for $x$: $2x + 3 = 7$
+A) $x = 1$
+B) $x = 2$ *
+```
+
+### Display math (block)
+
+Wrap LaTeX in double dollar signs — renders centred and larger:
+
+```
+Q: Evaluate $$\int_0^1 x\,dx$$
+A) $\tfrac{1}{2}$ *
+B) $1$
+```
+
+### Fenced code blocks
+
+Use triple backticks with an optional language tag. The fence must appear in the question, before the first option:
+
+```
+Q: What does this function return?
+```python
+def add(a, b):
+    return a + b
+```
+A) None
+B) a + b *
+```
+
+**Supported highlight languages:** `javascript`, `typescript`, `python`, `rust`, `go`, `java`, `c`, `cpp`, `bash`, `json`, `html`, `css`, `sql`. Unknown language tags fall back to plain monospace.
+
+Code blocks automatically switch between light and dark colour schemes based on your system preference (`prefers-color-scheme`).
+
 ## Project Structure
 
 ```

@@ -1,3 +1,43 @@
 @import 'tailwindcss';
+@import 'katex/dist/katex.min.css';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+/* ── Shiki dual-theme ──────────────────────────────────────────────────────
+   Shiki's dual-theme mode emits per-token CSS custom properties:
+     --shiki-light / --shiki-light-bg  (light theme colours)
+     --shiki-dark  / --shiki-dark-bg   (dark theme colours)
+   The rules below wire those to the actual color / background-color. */
+.shiki,
+.shiki span {
+	color: var(--shiki-light);
+	background-color: var(--shiki-light-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+	.shiki,
+	.shiki span {
+		color: var(--shiki-dark);
+		background-color: var(--shiki-dark-bg);
+	}
+}
+
+/* ── Shiki wrapper normalisation ────────────────────────────────────────── */
+.shiki-wrapper pre {
+	margin: 0;
+	padding: 1rem;
+	border-radius: 0.5rem;
+}
+
+.shiki-wrapper code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
+	font-size: 0.875rem;
+	line-height: 1.6;
+}
+
+/* ── KaTeX dark-mode safety ─────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+	.katex {
+		color: inherit;
+	}
+}

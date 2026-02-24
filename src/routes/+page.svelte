@@ -276,11 +276,35 @@ B) [Option]
   Supported languages: python, javascript, typescript, java, c, cpp,
                        rust, go, bash, sql, html, css, json
 
+━━━ WHEN USING SLIDES OR ATTACHMENTS ━━━━━━━━━━━━━━━━━
+
+If the user attaches files (slides, PDFs, images, lecture notes, etc.):
+• Treat the attached material as the sole source of truth — do not invent
+  facts that are absent from it
+• Extract key concepts, definitions, terminology, and facts directly from
+  the content; use the same wording as the source where possible
+• Distribute questions proportionally across the material (e.g. one or two
+  per major section or slide group) unless a focus area is specified
+• Prefer testing understanding and application over pure recall
+• If the material contains code, diagrams, or equations, reference them
+  explicitly in the question text
+• Set the quiz title to the inferred topic of the attached material unless
+  the user specifies one
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Now create a [10]-question quiz about: [TOPIC]
+Choose ONE of the two options below and fill it in:
+
+── OPTION A — No attachments (topic-based) ───────────
+Create a [10]-question quiz about: [TOPIC]
 Difficulty: [beginner / intermediate / advanced]
-Focus on: [specific concepts or subtopics]`;
+Focus on: [specific concepts or subtopics]
+
+── OPTION B — Slides / attachments provided ──────────
+I have attached: [brief description, e.g. "12 lecture slides on neural networks"]
+Create [10] questions drawn from the attached material.
+Difficulty: [beginner / intermediate / advanced]
+Focus on: [optional — leave blank to cover the full material]`;
 </script>
 
 <div class="min-h-screen bg-white" transition:fade>
@@ -868,8 +892,9 @@ B) $x = 5$ *</pre>
 						Generate with AI
 					</h2>
 					<p class="mb-4 text-sm text-zinc-500">
-						Use the prompt below with ChatGPT, Claude, Gemini, or any AI assistant. Fill in your
-						topic, difficulty, and focus at the bottom, then paste the AI's output directly into the
+						Use the prompt below with ChatGPT, Claude, Gemini, or any AI assistant. You can either
+						describe a topic <em>or</em> attach your slides, PDFs, or lecture notes directly — fill
+						in the relevant option at the bottom, then paste the AI's output into the
 						<strong class="text-zinc-700">Add Quiz</strong> text box.
 					</p>
 					<pre

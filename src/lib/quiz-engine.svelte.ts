@@ -1,4 +1,4 @@
-import type { Question, QuestionAnswer, QuizAttempt } from './types';
+import type { Question, QuestionAnswer, QuizAttempt, QuizProgress } from './types';
 import { generateId, nowISO } from './utils';
 
 export class QuizEngine {
@@ -89,4 +89,24 @@ export class QuizEngine {
 		const question = this.questions.find((q) => q.id === questionId);
 		return question ? selected === question.correctOptionId : false;
 	};
+
+	toProgress = (courseId: string, quizId: string, progressId?: string, startedAt?: string): QuizProgress => {
+		return {
+			id: progressId ?? generateId(),
+			courseId,
+			quizId,
+			currentIndex: this.currentIndex,
+			answers: { ...this.answers },
+			questionIds: this.questions.map((q) => q.id),
+			startedAt: startedAt ?? nowISO(),
+			updatedAt: nowISO()
+		};
+	};
+
+	static fromProgress(progress: QuizProgress, questions: Question[]): QuizEngine {
+		const engine = new QuizEngine(questions);
+		engine.currentIndex = Math.min(progress.currentIndex, questions.length - 1);
+		engine.answers = { ...progress.answers };
+		return engine;
+	}
 }

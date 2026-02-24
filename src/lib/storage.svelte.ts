@@ -1,8 +1,9 @@
-import type { Course, TopicQuiz, QuizAttempt } from './types';
+import type { Course, TopicQuiz, QuizAttempt, QuizProgress } from './types';
 import { nowISO } from './utils';
 
 const COURSES_KEY = 'quizmaster_courses';
 const ATTEMPTS_KEY = 'quizmaster_attempts';
+const PROGRESS_KEY = 'quizmaster_progress';
 
 function loadFromStorage<T>(key: string, fallback: T): T {
 	if (typeof window === 'undefined') return fallback;
@@ -19,9 +20,10 @@ function saveToStorage<T>(key: string, value: T): void {
 	localStorage.setItem(key, JSON.stringify(value));
 }
 
-export const store = $state<{ courses: Course[]; attempts: QuizAttempt[] }>({
+export const store = $state<{ courses: Course[]; attempts: QuizAttempt[]; progress: QuizProgress[] }>({
 	courses: [],
-	attempts: []
+	attempts: [],
+	progress: []
 });
 
 let initialized = $state(false);
@@ -31,6 +33,7 @@ export function init() {
 	if (typeof window === 'undefined') return;
 	store.courses = loadFromStorage<Course[]>(COURSES_KEY, []);
 	store.attempts = loadFromStorage<QuizAttempt[]>(ATTEMPTS_KEY, []);
+	store.progress = loadFromStorage<QuizProgress[]>(PROGRESS_KEY, []);
 	initialized = true;
 }
 
@@ -44,6 +47,11 @@ $effect.root(() => {
 		const attempts = $state.snapshot(store.attempts);
 		if (!initialized) return;
 		saveToStorage(ATTEMPTS_KEY, attempts);
+	});
+	$effect(() => {
+		const progress = $state.snapshot(store.progress);
+		if (!initialized) return;
+		saveToStorage(PROGRESS_KEY, progress);
 	});
 });
 
@@ -68,6 +76,7 @@ export function deleteCourse(id: string): void {
 	const idx = store.courses.findIndex((c) => c.id === id);
 	if (idx !== -1) store.courses.splice(idx, 1);
 	store.attempts = store.attempts.filter((a) => a.courseId !== id);
+	store.progress = store.progress.filter((p) => p.courseId !== id);
 }
 
 // Quiz CRUD
@@ -101,6 +110,7 @@ export function deleteQuiz(courseId: string, quizId: string): void {
 	if (idx !== -1) course.quizzes.splice(idx, 1);
 	course.updatedAt = nowISO();
 	store.attempts = store.attempts.filter((a) => a.quizId !== quizId);
+	deleteProgress(quizId);
 }
 
 // Attempts
@@ -110,4 +120,23 @@ export function addAttempt(attempt: QuizAttempt): void {
 
 export function getAttemptsForQuiz(quizId: string): QuizAttempt[] {
 	return store.attempts.filter((a) => a.quizId === quizId);
+}
+
+// Progress (in-progress quiz tracking)
+export function saveProgress(progress: QuizProgress): void {
+	const idx = store.progress.findIndex((p) => p.quizId === progress.quizId);
+	if (idx !== -1) {
+		store.progress[idx] = progress;
+	} else {
+		store.progress.push(progress);
+	}
+}
+
+export function getProgress(quizId: string): QuizProgress | undefined {
+	return store.progress.find((p) => p.quizId === quizId);
+}
+
+export function deleteProgress(quizId: string): void {
+	const idx = store.progress.findIndex((p) => p.quizId === quizId);
+	if (idx !== -1) store.progress.splice(idx, 1);
 }

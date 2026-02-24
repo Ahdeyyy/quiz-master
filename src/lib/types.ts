@@ -46,3 +46,14 @@ export interface QuizAttempt {
 	percentage: number;
 	completedAt: string;
 }
+
+export interface QuizProgress {
+	id: string;
+	courseId: string;
+	quizId: string;
+	currentIndex: number;
+	answers: Record<string, string>;
+	questionIds: string[];
+	startedAt: string;
+	updatedAt: string;
+}

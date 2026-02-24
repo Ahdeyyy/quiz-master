@@ -8,13 +8,17 @@
 		addQuizToCourse,
 		deleteQuiz,
 		addAttempt,
-		getAttemptsForQuiz
+		getAttemptsForQuiz,
+		saveProgress,
+		getProgress,
+		deleteProgress
 	} from '$lib/storage.svelte';
 	import { parseQuizText, quizToText } from '$lib/parser';
 	import { QuizEngine } from '$lib/quiz-engine.svelte';
 	import { generateId, nowISO, downloadFile } from '$lib/utils';
 	import type { Course, TopicQuiz } from '$lib/types';
 	import { fade } from 'svelte/transition';
+	import { untrack } from 'svelte';
 	import RichText from '$lib/RichText.svelte';
 
 	init();
@@ -35,6 +39,12 @@
 	let confirmDeleteQuiz = $state<string | null>(null);
 	let viewBeforeHelp = $state<View>('courses');
 	let promptCopied = $state(false);
+	let showResumePrompt = $state(false);
+	let pendingQuiz = $state<TopicQuiz | null>(null);
+	// Plain (non-reactive) — using $state here caused effect_update_depth_exceeded
+	// because the auto-save $effect both read and wrote these variables.
+	let activeProgressId: string | null = null;
+	let activeProgressStartedAt: string | null = null;
 
 	let selectedCourse = $derived(
 		selectedCourseId ? store.courses.find((c) => c.id === selectedCourseId) : null
@@ -112,15 +122,63 @@
 	}
 
 	function startQuiz(quiz: TopicQuiz) {
+		const existing = getProgress(quiz.id);
+		if (existing) {
+			// Validate that quiz questions haven't changed
+			const currentIds = quiz.questions.map((q) => q.id).join(',');
+			const savedIds = existing.questionIds.join(',');
+			if (currentIds === savedIds) {
+				pendingQuiz = quiz;
+				showResumePrompt = true;
+				return;
+			}
+			// Stale progress — discard silently
+			deleteProgress(quiz.id);
+		}
+		launchFreshQuiz(quiz);
+	}
+
+	function launchFreshQuiz(quiz: TopicQuiz) {
 		engine = new QuizEngine(quiz.questions);
 		selectedQuizId = quiz.id;
+		activeProgressId = null;
+		activeProgressStartedAt = null;
 		currentView = 'quiz-take';
+	}
+
+	function resumeQuiz() {
+		if (!pendingQuiz) return;
+		const progress = getProgress(pendingQuiz.id)!;
+		engine = QuizEngine.fromProgress(progress, pendingQuiz.questions);
+		selectedQuizId = pendingQuiz.id;
+		activeProgressId = progress.id;
+		activeProgressStartedAt = progress.startedAt;
+		showResumePrompt = false;
+		pendingQuiz = null;
+		currentView = 'quiz-take';
+	}
+
+	function startFresh() {
+		if (!pendingQuiz) return;
+		deleteProgress(pendingQuiz.id);
+		const quiz = pendingQuiz;
+		showResumePrompt = false;
+		pendingQuiz = null;
+		launchFreshQuiz(quiz);
+	}
+
+	function cancelResume() {
+		showResumePrompt = false;
+		pendingQuiz = null;
 	}
 
 	function submitQuiz() {
 		if (!engine || !selectedCourseId || !selectedQuizId) return;
 		const attempt = engine.submit(selectedCourseId, selectedQuizId);
 		addAttempt(attempt);
+		deleteProgress(selectedQuizId);
+		activeProgressId = null;
+		activeProgressStartedAt = null;
 		currentView = 'quiz-result';
 	}
 
@@ -134,6 +192,8 @@
 	function backToCourse() {
 		selectedQuizId = null;
 		engine = null;
+		activeProgressId = null;
+		activeProgressStartedAt = null;
 		currentView = 'course-detail';
 	}
 
@@ -145,6 +205,28 @@
 	function closeHelp() {
 		currentView = viewBeforeHelp;
 	}
+
+	// Auto-save quiz progress to localStorage on every answer/navigation change
+	$effect(() => {
+		if (!engine || engine.submitted || !selectedCourseId || !selectedQuizId) return;
+		// Read reactive state to trigger re-runs
+		const idx = engine.currentIndex;
+		const ans = { ...engine.answers };
+		// Only save if there's meaningful progress (at least one answer or moved past first question)
+		if (Object.keys(ans).length === 0 && idx === 0) return;
+		const progress = engine.toProgress(
+			selectedCourseId,
+			selectedQuizId,
+			activeProgressId ?? undefined,
+			activeProgressStartedAt ?? undefined
+		);
+		activeProgressId = progress.id;
+		activeProgressStartedAt = progress.startedAt;
+		// untrack prevents saveProgress's internal store.progress.findIndex() read
+		// from being registered as a dependency — otherwise the write that follows
+		// would re-trigger this effect infinitely.
+		untrack(() => saveProgress(progress));
+	});
 
 	async function copyPrompt() {
 		await navigator.clipboard.writeText(AI_PROMPT);
@@ -358,12 +440,22 @@ Focus on: [specific concepts or subtopics]`;
 					<div class="space-y-1">
 						{#each selectedCourse.quizzes as quiz}
 							{@const attempts = getAttemptsForQuiz(quiz.id)}
+							{@const quizProgress = getProgress(quiz.id)}
 							<div class="group flex items-center justify-between border-t border-zinc-100 py-4">
 								<div class="flex-1">
 									<span class="text-lg font-semibold text-zinc-900">{quiz.title}</span>
 									<span class="ml-3 text-sm text-zinc-400"
 										>{quiz.questions.length} question{quiz.questions.length !== 1 ? 's' : ''}</span
 									>
+									{#if quizProgress}
+										<span
+											class="ml-3 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+										>
+											<span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+											In Progress • {Object.keys(quizProgress.answers).length}/{quiz.questions
+												.length}
+										</span>
+									{/if}
 									{#if attempts.length > 0}
 										<span class="ml-3 text-sm text-indigo-500"
 											>Best: {Math.max(...attempts.map((a) => a.percentage))}%</span
@@ -374,7 +466,8 @@ Focus on: [specific concepts or subtopics]`;
 								<div class="flex items-center gap-3 text-sm">
 									<button
 										onclick={() => startQuiz(quiz)}
-										class="font-medium text-indigo-600 hover:text-indigo-700">Take Quiz</button
+										class="font-medium text-indigo-600 hover:text-indigo-700"
+										>{quizProgress ? 'Resume Quiz' : 'Take Quiz'}</button
 									>
 									<button onclick={() => exportQuiz(quiz)} class="text-zinc-400 hover:text-zinc-600"
 										>Export</button
@@ -517,8 +610,8 @@ C) The absence of a value *</pre>
 
 					{#if isAnswered && engine.currentQuestion.explanation}
 						<p class="mt-5 text-sm text-zinc-500">
-						<RichText text={engine.currentQuestion.explanation ?? ''} />
-					</p>
+							<RichText text={engine.currentQuestion.explanation ?? ''} />
+						</p>
 					{/if}
 				{/if}
 
@@ -641,8 +734,8 @@ C) The absence of a value *</pre>
 							<div>
 								<p class="font-medium text-zinc-900">Add a Quiz</p>
 								<p class="mt-0.5 text-sm text-zinc-500">
-									Open the course, click <strong>Add Quiz</strong>, paste your quiz text (see
-									format below or use the AI prompt), then click
+									Open the course, click <strong>Add Quiz</strong>, paste your quiz text (see format
+									below or use the AI prompt), then click
 									<strong>Parse &amp; Add</strong>.
 								</p>
 							</div>
@@ -739,8 +832,7 @@ B) $x = 5$ *</pre>
 								<tr>
 									<td class="px-4 py-2.5 font-mono text-xs text-zinc-800">`code`</td>
 									<td class="px-4 py-2.5 text-zinc-600">
-										<code
-											class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-800"
+										<code class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-800"
 											>inline code badge</code
 										>
 									</td>
@@ -764,8 +856,7 @@ B) $x = 5$ *</pre>
 					</div>
 					<p class="text-xs text-zinc-400">
 						Supported highlight languages: <span class="font-mono"
-							>python, javascript, typescript, java, c, cpp, rust, go, bash, sql, html, css,
-							json</span
+							>python, javascript, typescript, java, c, cpp, rust, go, bash, sql, html, css, json</span
 						>. Code blocks switch between light and dark themes automatically based on your system
 						preference.
 					</p>
@@ -782,7 +873,7 @@ B) $x = 5$ *</pre>
 						<strong class="text-zinc-700">Add Quiz</strong> text box.
 					</p>
 					<pre
-						class="mb-3 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-4 font-mono text-xs text-zinc-700 whitespace-pre">{AI_PROMPT}</pre>
+						class="mb-3 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-4 font-mono text-xs whitespace-pre text-zinc-700">{AI_PROMPT}</pre>
 					<button
 						onclick={copyPrompt}
 						class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors {promptCopied
@@ -801,9 +892,9 @@ B) $x = 5$ *</pre>
 							<span class="mt-0.5 text-zinc-300">•</span>
 							<span
 								>Export any quiz as a <code
-									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700"
-									>.txt</code
-								> file using the <strong class="text-zinc-700">Export</strong> button on each quiz card.</span
+									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700">.txt</code
+								>
+								file using the <strong class="text-zinc-700">Export</strong> button on each quiz card.</span
 							>
 						</li>
 						<li class="flex gap-2">
@@ -833,8 +924,7 @@ B) $x = 5$ *</pre>
 							<span class="mt-0.5 text-zinc-300">•</span>
 							<span
 								>To back up your quizzes, export them and keep the <code
-									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700"
-									>.txt</code
+									class="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs text-zinc-700">.txt</code
 								> files. Re-import them at any time by pasting into Add Quiz.</span
 							>
 						</li>
@@ -843,4 +933,42 @@ B) $x = 5$ *</pre>
 			</div>
 		{/if}
 	</div>
+
+	<!-- Resume prompt modal -->
+	{#if showResumePrompt && pendingQuiz}
+		{@const progress = getProgress(pendingQuiz.id)}
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+			transition:fade={{ duration: 150 }}
+		>
+			<div class="mx-4 w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
+				<h3 class="mb-2 text-xl font-bold text-zinc-900">Resume Quiz?</h3>
+				<p class="mb-1 text-sm text-zinc-600">
+					You have an in-progress attempt for <strong class="text-zinc-800"
+						>{pendingQuiz.title}</strong
+					>.
+				</p>
+				{#if progress}
+					<p class="mb-6 text-sm text-zinc-400">
+						{Object.keys(progress.answers).length} of {pendingQuiz.questions.length} questions answered
+					</p>
+				{/if}
+				<div class="flex items-center gap-3">
+					<button
+						onclick={resumeQuiz}
+						class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+						>Resume</button
+					>
+					<button
+						onclick={startFresh}
+						class="rounded-lg border border-zinc-200 px-5 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+						>Start Fresh</button
+					>
+					<button onclick={cancelResume} class="ml-auto text-sm text-zinc-400 hover:text-zinc-600"
+						>Cancel</button
+					>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>

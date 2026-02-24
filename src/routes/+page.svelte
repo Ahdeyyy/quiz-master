@@ -10,9 +10,9 @@
 		addAttempt,
 		getAttemptsForQuiz
 	} from '$lib/storage.svelte';
-	import { parseQuizText } from '$lib/parser';
+	import { parseQuizText, quizToText } from '$lib/parser';
 	import { QuizEngine } from '$lib/quiz-engine.svelte';
-	import { generateId, nowISO } from '$lib/utils';
+	import { generateId, nowISO, downloadFile } from '$lib/utils';
 	import type { Course, TopicQuiz } from '$lib/types';
 	import { fade } from 'svelte/transition';
 
@@ -97,6 +97,15 @@
 	function removeQuiz(courseId: string, quizId: string) {
 		deleteQuiz(courseId, quizId);
 		confirmDeleteQuiz = null;
+	}
+
+	function exportQuiz(quiz: TopicQuiz) {
+		downloadFile(`${quiz.title}.txt`, quizToText(quiz));
+	}
+
+	function exportCourse(course: Course) {
+		const content = course.quizzes.map(quizToText).join('\n\n');
+		downloadFile(`${course.title}.txt`, content);
 	}
 
 	function startQuiz(quiz: TopicQuiz) {
@@ -252,11 +261,19 @@
 						: ''}
 				</p>
 
-				<button
-					onclick={openQuizAdd}
-					class="mb-8 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:translate-y-px"
-					>Add Quiz</button
-				>
+				<div class="mb-8 flex items-center gap-4">
+					<button
+						onclick={openQuizAdd}
+						class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 active:translate-y-px"
+						>Add Quiz</button
+					>
+					{#if selectedCourse.quizzes.length > 0}
+						<button
+							onclick={() => exportCourse(selectedCourse!)}
+							class="text-sm text-zinc-400 hover:text-zinc-600">Export All</button
+						>
+					{/if}
+				</div>
 
 				{#if selectedCourse.quizzes.length === 0}
 					<p class="text-zinc-400">No quizzes yet. Add one by pasting quiz text.</p>
@@ -281,6 +298,9 @@
 									<button
 										onclick={() => startQuiz(quiz)}
 										class="font-medium text-indigo-600 hover:text-indigo-700">Take Quiz</button
+									>
+									<button onclick={() => exportQuiz(quiz)} class="text-zinc-400 hover:text-zinc-600"
+										>Export</button
 									>
 									{#if confirmDeleteQuiz === quiz.id}
 										<span class="text-zinc-500">Remove?</span>

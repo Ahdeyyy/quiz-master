@@ -100,3 +100,24 @@ export function parseQuizText(text: string, courseId: string): ParseResult {
 
 	return { quiz, errors };
 }
+
+const OPTION_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+export function quizToText(quiz: TopicQuiz): string {
+	const lines: string[] = [`Quiz: ${quiz.title}`, ''];
+
+	for (const question of quiz.questions) {
+		lines.push(`Q: ${question.text}`);
+		question.options.forEach((option, i) => {
+			const letter = OPTION_LETTERS[i] ?? String.fromCharCode(65 + i);
+			const marker = option.id === question.correctOptionId ? ' *' : '';
+			lines.push(`${letter}) ${option.text}${marker}`);
+		});
+		if (question.explanation) {
+			lines.push(`Explanation: ${question.explanation}`);
+		}
+		lines.push('---');
+	}
+
+	return lines.join('\n');
+}
